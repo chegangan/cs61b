@@ -17,4 +17,21 @@ public class SquarePrimesTest {
         assertEquals("14 -> 15 -> 16 -> 289 -> 18", lst.toString());
         assertTrue(changed);
     }
+
+    @Test
+    public void testSquarePrimesComplex() {
+        IntList lst = IntList.of(1,2,13,40);
+        boolean changed = IntListExercises.squarePrimes(lst);
+        assertEquals("1 -> 4 -> 169 -> 40", lst.toString());
+        assertTrue(changed);
+    }
+
+    @Test
+    public void testSquarePrimesComplex2() {
+        IntList lst = IntList.of(1,18,30);
+        boolean changed = IntListExercises.squarePrimes(lst);
+        assertEquals("1 -> 18 -> 30", lst.toString());
+        assertTrue(!changed);
+    }
+
 }
