@@ -2,13 +2,13 @@ package deque;
 
 
 //0 1 2 3 _ _ _ 4 5 6 7 则3为最前，4为最后，nextFirst=4, nextLast=7
-public class ArrayListDeque<T> implements Deque<T> {
+public class ArrayDeque<T> implements Deque<T> {
     T[] items;
     int nextFirst;
     int nextLast;
     int size;
 
-    public ArrayListDeque() {
+    public ArrayDeque() {
         items = (T[]) new Object[8];
         nextFirst = 0;
         nextLast = items.length - 1;
