@@ -113,6 +113,9 @@ public class LinkedListDeque<T> implements Deque<T>, Iterable<T> {
     @Override
     public T get(int index) {
         DequeIterator iterator = new DequeIterator();
+        if(this.size == 0){
+            return null;
+        }
         for (int i = 0; i < index - 1; i++) {
             iterator.next();
         }

@@ -28,19 +28,30 @@ public class ArrayDeque<T> implements Deque<T> {
             reviseSize(2);
         }
         items[nextFirst] = item;
-        nextFirst++;
+        nextFirstAdd();
         size++;
     }
+    /*
+     1 2 3 4 5 _ 7 8
+     nextfirst = 5 , nextlast = 5
+     _ 1 2 3 4 5 6 7
+     nextfirst = 0 , nextlast = 0
+     1 2 3 4 5 _ _ _ _ _ _ _ _ _ 7 8
+     nextfirst = 5 , nextlast = 14
+     7 8 1 2 3 4 5 _ _ _ _ _ _ _ _ _
+     nextfirst = size , nextlast = lenth-1
+     */
 
     public void reviseSize(double rate) {
         T[] newItems = (T[]) new Object[(int) (items.length * rate)];
-        for (int i = 0; i < nextFirst; i++) {
-            newItems[i] = items[i];
+        int index = nextLast + 1;
+        for (int i = 0; i < size; i++) {
+            index = index >= size ? 0 : index;
+            newItems[i] = items[index];
+            index++;
         }
-        for (int i = nextLast + 1; i < items.length; i++) {
-            newItems[newItems.length - i - 1] = items[i];
-        }
-        nextLast = newItems.length - items.length + nextLast + 1;
+        nextLast = newItems.length - 1;
+        nextFirst = size;
         items = newItems;
     }
 
@@ -53,7 +64,7 @@ public class ArrayDeque<T> implements Deque<T> {
             reviseSize(2);
         }
         items[nextLast] = item;
-        nextLast--;
+        nextLastReduce();
         size++;
     }
 
@@ -91,10 +102,13 @@ public class ArrayDeque<T> implements Deque<T> {
      */
     @Override
     public T removeFirst() {
-        if ((nextLast - nextFirst + 1) * 4 < items.length) {
+        if(size == 0){
+            return null;
+        }
+        if (size * 4 < items.length && items.length > 8) {
             reviseSize(0.5);
         }
-        nextFirst--;
+        nextFirstReduce();
         T item = items[nextFirst];
         items[nextFirst] = null;
         size--;
@@ -106,10 +120,13 @@ public class ArrayDeque<T> implements Deque<T> {
      */
     @Override
     public T removeLast() {
-        if ((nextLast - nextFirst + 1) * 4 < items.length) {
+        if(size == 0){
+            return null;
+        }
+        if (size * 4 < items.length && items.length > 8) {
             reviseSize(0.5);
         }
-        nextLast++;
+        nextLastAdd();
         T item = items[nextLast];
         items[nextLast] = null;
         size--;
@@ -122,7 +139,7 @@ public class ArrayDeque<T> implements Deque<T> {
      */
     @Override
     public T get(int index) {
-        if (index < 0 || index >= size) {
+        if (index < 0 || index > size) {
             throw new IndexOutOfBoundsException("Index is out of range.");
         }
         int realIndex = nextFirst - 1 - index;
@@ -130,5 +147,33 @@ public class ArrayDeque<T> implements Deque<T> {
             realIndex += items.length;
         }
         return items[realIndex];
+    }
+
+    private void nextFirstAdd() {
+        nextFirst++;
+        if (nextFirst == items.length) {
+            nextFirst = 0;
+        }
+    }
+
+    private void nextLastAdd() {
+        nextLast++;
+        if (nextLast == items.length) {
+            nextLast = 0;
+        }
+    }
+
+    private void nextFirstReduce() {
+        nextFirst--;
+        if (nextFirst < 0) {
+            nextFirst = items.length - 1;
+        }
+    }
+
+    private void nextLastReduce() {
+        nextLast--;
+        if (nextLast < 0) {
+            nextLast = items.length - 1;
+        }
     }
 }
