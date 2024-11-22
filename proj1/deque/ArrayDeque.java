@@ -46,7 +46,7 @@ public class ArrayDeque<T> implements Deque<T> {
         T[] newItems = (T[]) new Object[(int) (items.length * rate)];
         int index = nextLast + 1;
         for (int i = 0; i < size; i++) {
-            index = index >= size ? 0 : index;
+            index = index > size ? 0 : index;
             newItems[i] = items[index];
             index++;
         }
