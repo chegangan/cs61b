@@ -72,14 +72,6 @@ public class ArrayDeque<T> implements Deque<T> {
      * @return
      */
     @Override
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
-    /**
-     * @return
-     */
-    @Override
     public int size() {
         return size;
     }
