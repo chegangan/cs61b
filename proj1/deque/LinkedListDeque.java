@@ -109,7 +109,7 @@ public class LinkedListDeque<T> implements Deque<T>, Iterable<T> {
     @Override
     public T get(int index) {
         DequeIterator iterator = new DequeIterator();
-        if(this.size == 0){
+        if (this.size == 0) {
             return null;
         }
         for (int i = 0; i < index - 1; i++) {
@@ -150,20 +150,5 @@ public class LinkedListDeque<T> implements Deque<T>, Iterable<T> {
             current = current.next;
             return value;
         }
-    }
-
-    public T getRecursive(int index) {
-        if (index < 0 || index >= size) {
-            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
-        }
-        return (T) getRecursive0(sentinel.next, index);
-
-    }
-
-    public T getRecursive0(Node current, int index) {
-        if (index != 0) {
-            return (T) getRecursive0(current.next, index - 1);
-        }
-        return (T) current.value;
     }
 }

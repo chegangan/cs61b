@@ -94,7 +94,7 @@ public class ArrayDeque<T> implements Deque<T> {
      */
     @Override
     public T removeFirst() {
-        if(size == 0){
+        if (size == 0) {
             return null;
         }
         if (size * 4 < items.length && items.length > 8) {
@@ -112,7 +112,7 @@ public class ArrayDeque<T> implements Deque<T> {
      */
     @Override
     public T removeLast() {
-        if(size == 0){
+        if (size == 0) {
             return null;
         }
         if (size * 4 < items.length && items.length > 8) {
