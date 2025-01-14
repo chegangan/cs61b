@@ -1,8 +1,8 @@
 package capers;
 
-import java.io.File;
+import java.util.Arrays;
 
-import static capers.Utils.*;
+import static capers.Utils.exitWithError;
 
 /** Canine Capers: A Gitlet Prelude.
  * @author TODO
@@ -52,11 +52,15 @@ public class Main {
             break;
         case "dog":
             validateNumArgs("dog", args, 4);
-            // TODO: make a dog
+            Dog dog = new Dog(args[1], args[2], Integer.parseInt(args[3]));
+            System.out.println(dog.toString());
+            dog.saveDog();
             break;
         case "birthday":
             validateNumArgs("birthday", args, 2);
-            // TODO: celebrate this dog's birthday
+            Dog dog2 = Dog.fromFile(args[1]);
+            dog2.haveBirthday();
+            dog2.saveDog();
             break;
         default:
             exitWithError(String.format("Unknown command: %s", args[0]));
