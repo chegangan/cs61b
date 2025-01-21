@@ -362,7 +362,7 @@ def doTest(test):
                 try:
                     timeout = float(Group(1))
                 except:
-                    ValueError("bad time: {}".format(line))
+                    ValueError("bad timestamp: {}".format(line))
             elif Match(r'\+\s*(\S+)\s+(\S+)', line):
                 doCopy(Group(1), Group(2), cdir)
             elif Match(r'-\s*(\S+)', line):
