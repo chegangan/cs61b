@@ -4,7 +4,10 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+
+import static gitlet.Utils.writeObject;
 
 /**
  * Represents a gitlet commit object.
@@ -21,6 +24,7 @@ public class Commit implements Serializable, Dumpable {
     private String message;
     /**
      * The timestamp of this Commit.
+     * 这个在save的时候自动赋值
      */
     private long timestamp;
     /**
@@ -31,39 +35,34 @@ public class Commit implements Serializable, Dumpable {
     /**
      * The file of this Commit.
      */
-    private List<String> blobs;
+    private List<String[]> blobNameHashList = new ArrayList<>();
     /**
      * The hash of this Commit.
+     * 这个在save的时候自动赋值为blobNameHashList.toString的hash值
      */
     private String hash;
 
     //所有commit的构造方法都会自动生成时间戳
+    //当save commit时，会自动生成hash值和时间戳
     public Commit() {
-        this.timestamp = Instant.now().getEpochSecond();
         this.message = null;
         this.parentCommitId1 = null;
         this.parentCommitId2 = null;
-        this.blobs = null;
         this.hash = null;
     }
 
     public Commit(String message) {
         this.message = message;
-        this.timestamp = Instant.now().getEpochSecond();
         this.parentCommitId1 = null;
         this.parentCommitId2 = null;
-        this.blobs = null;
         this.hash = null;
     }
 
     //默认情况下的commit中的blobs为空字符串“”
     public static Commit initCommit() {
         Commit commit = new Commit("initial commit");
-        commit.blobs = null;
         commit.parentCommitId1 = null;
         commit.parentCommitId2 = null;
-        String data = "";
-        commit.hash = Utils.sha1(data);
         return commit;
     }
 
@@ -100,12 +99,12 @@ public class Commit implements Serializable, Dumpable {
         this.parentCommitId2 = parentCommitId2;
     }
 
-    public List<String> getBlobs() {
-        return blobs;
+    public List<String[]> getBlobNameHashList() {
+        return blobNameHashList;
     }
 
-    public void setBlobs(List<String> blobs) {
-        this.blobs = blobs;
+    public void setBlobNameHashList(List<String[]> blobNameHashList) {
+        this.blobNameHashList = blobNameHashList;
     }
 
     public String getHash() {
@@ -136,19 +135,22 @@ public class Commit implements Serializable, Dumpable {
                 ", timestamp=" + timestamp + '\'' +
                 ", parentCommitId1='" + parentCommitId1 + '\'' +
                 ", parentCommitId2='" + parentCommitId2 + '\'' +
-                ", file=" + blobs + '\'' +
+                ", file=" + blobNameHashList + '\'' +
                 ", hash='" + hash + '\'' +
                 '}';
     }
 
-    //文件名保存为commit没有赋值hash之前的的hash值。
+    //自动生成当前的hash值和时间戳，保存到commits文件夹中，名字为hash值，并将head指向当前commit
     public void save() {
+        this.hash = this.Hash();
+        this.timestamp = Instant.now().getEpochSecond();
         Utils.writeObject(Utils.join(Repository.COMMITS_DIR, this.hash), this);
+        writeObject(Repository.HEAD, this);
     }
 
     // 这里的hash值是commit中的blobs的hash值
     public String Hash() {
-        String data = this.blobs.toString();
+        String data = this.blobNameHashList.toString();
         return Utils.sha1(data);
     }
 }
