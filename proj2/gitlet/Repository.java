@@ -106,7 +106,7 @@ public class Repository {
 
     @SuppressWarnings("DataFlowIssue")
     public static void commit(String message) {
-        if(message == null){
+        if (message == null) {
             System.out.println("Please enter a commit message.");
             return;
         }
@@ -198,5 +198,112 @@ public class Repository {
         return mergedList;
     }
 
+    public static void log() {
+        Commit commit = Utils.readObject(Repository.HEAD, Commit.class);
+        while (commit.getParentCommitId1() != null) {
+            System.out.println("===");
+            System.out.println("commit " + commit.getHash());
+            System.out.println("Date: " + commit.getFormattedTimestamp());
+            System.out.println(commit.getMessage());
+            System.out.println();
+            commit = Utils.readObject(Utils.join(Repository.COMMITS_DIR, commit.getParentCommitId1()), Commit.class);
+        }
+        System.out.println("===");
+        System.out.println("commit " + commit.getHash());
+        System.out.println("Date: " + commit.getFormattedTimestamp());
+        System.out.println(commit.getMessage());
+        System.out.println();
+    }
 
+    public static void checkout(String branchName) {
+        //查看branchName是否存在
+        if (!new File(Repository.BRANCHES_DIR, branchName).exists()) {
+            System.out.println("No such branch exists.");
+            return;
+        }
+        Commit preCommit = Utils.readObject(Repository.HEAD, Commit.class);
+        Branches branch = Utils.readObject(new File(Repository.BRANCHES_DIR, branchName), Branches.class);
+        //查看branchName是否是当前分支
+        if (preCommit.getHash().equals(branch.getHead())) {
+            System.out.println("No need to checkout the current branch.");
+            return;
+        }
+        //读取branchName指向的commit
+        Commit nextCommit = Utils.readObject(new File(Repository.COMMITS_DIR, branch.getHead()), Commit.class);
+        //删除CWD中被preCommit跟踪，但没被nextCommit跟踪的文件
+        for (String[] vector : preCommit.getBlobNameHashList()) {
+            String fileName = vector[0];
+            File file = Utils.join(CWD, fileName);
+            if (!nextCommit.getBlobNameHashList().stream().anyMatch(v -> v[0].equals(fileName))) {
+                if (!file.delete()) {
+                    System.out.println("Failed to delete file: " + fileName);
+                }
+            }
+        }
+        //将nextCommit中的文件复制到CWD中，如果文件已经存在，覆盖
+        for (String[] vector : nextCommit.getBlobNameHashList()) {
+            String fileName = vector[0];
+            String hash = vector[1];
+            File file = Utils.join(CWD, fileName);
+            File blobFile = Utils.join(Repository.BLOBS_DIR, hash);
+            Utils.writeContents(file, (Object) Utils.readObject(blobFile, Blob.class).getContent());
+        }
+        //删除暂存区中的文件
+        Utils.plainFilenamesIn(join(Repository.STAGING_DIR)).forEach(fileName -> {
+            if (!new File(Repository.BLOBS_DIR, fileName).delete()) {
+                System.out.println("Failed to delete file: " + fileName);
+            }
+        });
+        //将HEAD指向branchName
+        writeObject(join(Repository.HEAD), nextCommit);
+    }
+
+    public static void checkout(String a, String fileName) {
+        if (!a.equals("--")) {
+            System.out.println("Incorrect operands.");
+            return;
+        }
+        Commit commit = Utils.readObject(Repository.HEAD, Commit.class);
+        String hash = null;
+        for (String[] vector : commit.getBlobNameHashList()) {
+            if (vector[0].equals(fileName)) {
+                hash = vector[1];
+                break;
+            }
+        }
+        if (hash == null) {
+            System.out.println("File does not exist in that commit.");
+            return;
+        }
+        File file = Utils.join(CWD, fileName);
+        File blobFile = Utils.join(Repository.BLOBS_DIR, hash);
+        Utils.writeContents(file, (Object) Utils.readObject(blobFile, Blob.class).getContent());
+    }
+
+    public static void checkout(String commitId, String a, String fileName) {
+        if (!a.equals("--")) {
+            System.out.println("Incorrect operands.");
+            return;
+        }
+        File commitFile = Utils.join(Repository.COMMITS_DIR, commitId);
+        if (!commitFile.exists()) {
+            System.out.println("No commit with that id exists.");
+            return;
+        }
+        Commit commit = Utils.readObject(commitFile, Commit.class);
+        String hash = null;
+        for (String[] vector : commit.getBlobNameHashList()) {
+            if (vector[0].equals(fileName)) {
+                hash = vector[1];
+                break;
+            }
+        }
+        if (hash == null) {
+            System.out.println("File does not exist in that commit.");
+            return;
+        }
+        File file = Utils.join(CWD, fileName);
+        File blobFile = Utils.join(Repository.BLOBS_DIR, hash);
+        Utils.writeContents(file, (Object) Utils.readObject(blobFile, Blob.class).getContent());
+    }
 }

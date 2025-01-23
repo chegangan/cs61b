@@ -6,6 +6,8 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 import static gitlet.Utils.writeObject;
 
@@ -117,8 +119,8 @@ public class Commit implements Serializable, Dumpable {
 
     public String getFormattedTimestamp() {
         Instant instant = Instant.ofEpochSecond(timestamp);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE MMM d yyyy HH:mm:ss Z").
-                withZone(ZoneId.systemDefault());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss yyyy XXX", Locale.US)
+                .withZone(ZoneId.systemDefault());
         return formatter.format(instant);
     }
 
@@ -153,4 +155,12 @@ public class Commit implements Serializable, Dumpable {
         String data = this.blobNameHashList.toString();
         return Utils.sha1(data);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Commit commit = (Commit) o;
+        return timestamp == commit.timestamp && Objects.equals(message, commit.message) && Objects.equals(parentCommitId1, commit.parentCommitId1) && Objects.equals(parentCommitId2, commit.parentCommitId2) && Objects.equals(blobNameHashList, commit.blobNameHashList) && Objects.equals(hash, commit.hash);
+    }
+
 }
