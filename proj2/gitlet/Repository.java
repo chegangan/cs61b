@@ -1,10 +1,10 @@
 package gitlet;
 
 import java.io.File;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 import static gitlet.Utils.*;
 
@@ -48,7 +48,8 @@ public class Repository {
      */
     public static final File HEAD = join(REFS_DIR, "HEAD");
     public static final File BRANCHES_DIR = join(REFS_DIR, "branches");
-    public static final File MASTER_DIR = join(BRANCHES_DIR, "master");
+    public static final File MASTER_BRANCH = join(BRANCHES_DIR, "master");
+    public static final File CURRENT_BRANCH = join(REFS_DIR, "currentBranch");
 
     public static void init() {
         if (GITLET_DIR.exists()) {
@@ -59,7 +60,6 @@ public class Repository {
         COMMITS_DIR.mkdir();
         STAGING_DIR.mkdir();
         REFS_DIR.mkdir();
-        MASTER_DIR.mkdir();
         BRANCHES_DIR.mkdir();
         BLOBS_DIR.mkdir();
 
@@ -72,6 +72,8 @@ public class Repository {
         //保存branch指针
         master.save();
         //HEAD即为commit的序列化对象
+        writeObject(HEAD, initialCommit);
+        writeObject(CURRENT_BRANCH, master);
 
     }
 
@@ -254,8 +256,10 @@ public class Repository {
                 System.out.println("Failed to delete file: " + fileName);
             }
         });
-        //将HEAD指向branchName
+        //将HEAD指向当前commit
         writeObject(join(Repository.HEAD), nextCommit);
+        //将currentBranch指向branchName
+        writeObject(join(Repository.CURRENT_BRANCH), Utils.readObject(Repository.MASTER_BRANCH, Branches.class));
     }
 
     public static void checkout(String a, String fileName) {
@@ -278,6 +282,8 @@ public class Repository {
         File file = Utils.join(CWD, fileName);
         File blobFile = Utils.join(Repository.BLOBS_DIR, hash);
         Utils.writeContents(file, (Object) Utils.readObject(blobFile, Blob.class).getContent());
+        //切换当前分支
+        writeObject(join(Repository.CURRENT_BRANCH), Utils.readObject(Repository.MASTER_BRANCH, Branches.class));
     }
 
     public static void checkout(String commitId, String a, String fileName) {
@@ -305,5 +311,178 @@ public class Repository {
         File file = Utils.join(CWD, fileName);
         File blobFile = Utils.join(Repository.BLOBS_DIR, hash);
         Utils.writeContents(file, (Object) Utils.readObject(blobFile, Blob.class).getContent());
+    }
+
+    public static void status(){
+        List<String> cwdFiles = Utils.plainFilenamesIn(Repository.CWD);
+        if (!Repository.GITLET_DIR.exists()) {
+            System.out.println("请先初始化仓库");
+        }
+
+        List<String> trackedFiles = new ArrayList<>();
+        Commit HEAD = Utils.readObject(Repository.HEAD, Commit.class);
+        for (String[] vector : HEAD.getBlobNameHashList()) {
+            trackedFiles.add(vector[0]);
+        }
+
+        List<String> stagedFiles = Utils.plainFilenamesIn(Repository.STAGING_DIR);
+
+        System.out.println("=== Branches ===");
+        for (File file : Objects.requireNonNull(Repository.BRANCHES_DIR.listFiles())) {
+            Branches branch = Utils.readObject(file, Branches.class);
+            if (Utils.readObject(Repository.CURRENT_BRANCH,Branches.class).getHead().equals(
+                    Utils.readObject(Repository.HEAD,Commit.class).getHash()
+            )) {
+                System.out.println("*" + branch.getName());
+            } else {
+                System.out.println(branch.getName());
+            }
+        }
+        System.out.println();
+
+
+        System.out.println("=== Staged Files ===");
+        for (String fileName : Objects.requireNonNull(stagedFiles)) {
+            System.out.println(fileName);
+        }
+        System.out.println();
+
+
+        System.out.println("=== Removed Files ===");
+        for (String fileName : cwdFiles) {
+            // 如果文件在当前目录中，但不在暂存区中，且在当前commit中
+            if (!trackedFiles.contains(fileName) && new File(Repository.STAGING_DIR, fileName).exists()) {
+                System.out.println(fileName);
+            }
+        }
+        System.out.println();
+
+        System.out.println("=== Modifications Not Staged For Commit ===");
+        for (String fileName : cwdFiles) {
+            // 如果文件在当前目录中，但不在暂存区中，且在当前commit中
+            if (!trackedFiles.contains(fileName) && new File(Repository.STAGING_DIR, fileName).exists()) {
+                System.out.println(fileName + " (deleted)");
+            } else if (trackedFiles.contains(fileName) && !new File(Repository.STAGING_DIR, fileName).exists()) {
+                String hash = null;
+                for (String[] vector : HEAD.getBlobNameHashList()) {
+                    if (vector[0].equals(fileName)) {
+                        hash = vector[1];
+                        break;
+                    }
+                }
+                if (hash == null) {
+                    System.out.println(fileName + " (modified)");
+                } else {
+                    File file = Utils.join(Repository.CWD, fileName);
+                    Blob blob = new Blob(file);
+                    if (!hash.equals(blob.getHash())) {
+                        System.out.println(fileName + " (modified)");
+                    }
+                }
+            }
+        }
+        System.out.println();
+
+        System.out.println("=== Untracked Files ===");
+        for (String fileName : cwdFiles){
+            if (!trackedFiles.contains(fileName)) {
+                System.out.println(fileName);
+            }
+        }
+        System.out.println();
+    }
+
+    public static void rm(String fileNameToDelete) {
+        List<String> stagedFiles = Utils.plainFilenamesIn(Repository.STAGING_DIR);
+        //删除暂存区中的文件
+        if (stagedFiles.contains(fileNameToDelete)) {
+            File file = Utils.join(Repository.STAGING_DIR, fileNameToDelete);
+            if (!file.delete()) {
+                System.out.println("Failed to delete file: " + fileNameToDelete);
+            }
+            return;
+        }
+        //将文件储存到staging中
+        Commit commit = Utils.readObject(Repository.HEAD, Commit.class);
+        List<String[]> blobNameHashList = commit.getBlobNameHashList();
+        for (String[] vector : blobNameHashList) {
+            if (vector[0].equals(fileNameToDelete)) {
+                File file = Utils.join(Repository.STAGING_DIR, fileNameToDelete);
+                Utils.writeContents(file, vector[1]);
+                return;
+            }
+        }
+        //删除CWD中的文件
+        File file = Utils.join(Repository.CWD, fileNameToDelete);
+        if (!file.delete()) {
+            System.out.println("Failed to delete file: " + fileNameToDelete);
+        }
+        System.out.println("No reason to remove the file.");
+    }
+
+    public static void branch(String branchName) {
+        File branchFile = Utils.join(Repository.BRANCHES_DIR, branchName);
+        if (branchFile.exists()) {
+            System.out.println("A branch with that name already exists.");
+            return;
+        }
+        Commit commit = Utils.readObject(Repository.HEAD, Commit.class);
+        Branches branch = new Branches(commit.getHash(), branchName);
+        branch.save();
+    }
+
+    public static void rmBranch(String branchName) {
+        File branchFile = Utils.join(Repository.BRANCHES_DIR, branchName);
+        if (!branchFile.exists()) {
+            System.out.println("A branch with that name does not exist.");
+            return;
+        }
+        Branches branch = Utils.readObject(branchFile, Branches.class);
+        if (branch.getHead().equals(Utils.readObject(Repository.CURRENT_BRANCH, Commit.class).getHash())) {
+            System.out.println("Cannot remove the current branch.");
+            return;
+        }
+        if (!branchFile.delete()) {
+            System.out.println("Failed to delete branch file: " + branchName);
+        }
+    }
+
+    public static void reset(String commitId) {
+        File commitFile = Utils.join(Repository.COMMITS_DIR, commitId);
+        if (!commitFile.exists()) {
+            System.out.println("No commit with that id exists.");
+            return;
+        }
+        Commit commit = Utils.readObject(commitFile, Commit.class);
+        //删除CWD中被HEAD跟踪，但没被commit跟踪的文件
+        for (String[] vector : Utils.readObject(Repository.HEAD, Commit.class).getBlobNameHashList()) {
+            String fileName = vector[0];
+            File file = Utils.join(Repository.CWD, fileName);
+            if (!commit.getBlobNameHashList().stream().anyMatch(v -> v[0].equals(fileName))) {
+                if (!file.delete()) {
+                    System.out.println("Failed to delete file: " + fileName);
+                }
+            }
+        }
+        //将commit中的文件复制到CWD中，如果文件已经存在，覆盖
+        for (String[] vector : commit.getBlobNameHashList()) {
+            String fileName = vector[0];
+            String hash = vector[1];
+            File file = Utils.join(Repository.CWD, fileName);
+            File blobFile = Utils.join(Repository.BLOBS_DIR, hash);
+            Utils.writeContents(file, (Object) Utils.readObject(blobFile, Blob.class).getContent());
+        }
+        //删除暂存区中的文件
+        Utils.plainFilenamesIn(join(Repository.STAGING_DIR)).forEach(fileName -> {
+            if (!new File(Repository.BLOBS_DIR, fileName).delete()) {
+                System.out.println("Failed to delete file: " + fileName);
+            }
+        });
+        //将HEAD指向commitId
+        writeObject(join(Repository.HEAD), commit);
+    }
+
+    public static void merge(String branchName){
+
     }
 }

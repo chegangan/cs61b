@@ -1,5 +1,6 @@
 package gitlet;
 
+import java.io.File;
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -142,12 +143,21 @@ public class Commit implements Serializable, Dumpable {
                 '}';
     }
 
-    //自动生成当前的hash值和时间戳，保存到commits文件夹中，名字为hash值，并将head指向当前commit
+        //自动生成当前的hash值和时间戳，保存到commits文件夹中，名字为hash值，并将HEAD指向当前commit,branch的head指向当前commit
     public void save() {
         this.hash = this.Hash();
         this.timestamp = Instant.now().getEpochSecond();
         Utils.writeObject(Utils.join(Repository.COMMITS_DIR, this.hash), this);
         writeObject(Repository.HEAD, this);
+        //将当前分支的head指向当前commit
+        if(Repository.CURRENT_BRANCH.exists()) {
+            Branches branch = Utils.readObject(Repository.CURRENT_BRANCH, Branches.class);
+            branch.setHead(this.hash);
+            branch.save();
+        }else{
+            Branches branch = new Branches(this.hash, "master");
+            branch.save();
+        }
     }
 
     // 这里的hash值是commit中的blobs的hash值
